@@ -352,6 +352,8 @@ Complete these steps:
 
 3. Confirm the connection did not prompt for a password.
 
+4. [Exit the `SSH` shell session](./shell.md#exit-the-shell-session).
+
 ## Update the `SSH` config (LOCAL)
 
 > [!NOTE]
@@ -420,7 +422,7 @@ Complete these steps:
 
 4. Save (`Ctrl+O`, `Enter`).
 
-5. Exit (`Ctrl+X`).
+5. [Exit the shell session](./shell.md#exit-the-shell-session).
 
 ## Restart `sshd` (REMOTE)
 
