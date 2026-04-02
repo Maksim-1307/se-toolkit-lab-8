@@ -195,7 +195,7 @@ services:
       - ~/.qwen:/mnt/qwen-creds:ro
     environment:
       - PORT=${QWEN_CODE_API_CONTAINER_PORT:-8080}
-      - ADDRESS=${QWEN_CODE_API_CONTAINER_ADDRESS:-0.0.0.0}
+      - HOST=${QWEN_CODE_API_CONTAINER_ADDRESS:-0.0.0.0}
       - DEFAULT_MODEL=${QWEN_CODE_API_MODEL:?'QWEN_CODE_API_MODEL is required'}
       - LOG_LEVEL=${QWEN_CODE_API_LOG_LEVEL:?'QWEN_CODE_API_LOG_LEVEL is required'}
       - MAX_RETRIES=${QWEN_CODE_API_MAX_RETRIES:?'QWEN_CODE_API_MAX_RETRIES is required'}
@@ -216,15 +216,18 @@ services:
     healthcheck:
       test:
         - CMD
-        - python
-        - "-c"
+        - node
+        - "-e"
         - |
-          import urllib.request
-          req = urllib.request.Request(
-              'http://localhost:${QWEN_CODE_API_CONTAINER_PORT:-8080}/health',
-              headers={'X-API-Key': '${QWEN_CODE_API_KEY:-}'}
-          )
-          urllib.request.urlopen(req)
+          const req = require('http').request({
+            hostname: 'localhost',
+            port: '${QWEN_CODE_API_CONTAINER_PORT:-8080}',
+            path: '/health',
+            method: 'GET',
+            headers: { 'X-API-Key': '${QWEN_CODE_API_KEY:-}' }
+          }, (res) => { process.exit(res.statusCode === 200 ? 0 : 1) });
+          req.on('error', () => process.exit(1));
+          req.end();
       interval: 30s
       timeout: 10s
       retries: 3
