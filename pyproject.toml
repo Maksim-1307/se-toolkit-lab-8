@@ -1,7 +1,6 @@
 [tool.uv.workspace]
 members = [
   "backend",
-  "qwen-code-api",
   "mcp/mcp-lms",
 
   # Uncommented for Task 2B

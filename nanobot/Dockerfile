@@ -27,11 +27,15 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # 2. nanobot-webchat (depends on protocol, already installed)
 COPY nanobot-websocket-channel/nanobot-webchat/ ./nanobot-webchat/
+# Fix workspace source reference for Docker build context
+RUN sed -i 's/{ workspace = true }/{ path = "..\/nanobot-channel-protocol" }/g' ./nanobot-webchat/pyproject.toml
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install ./nanobot-webchat
 
 # 3. mcp-webchat (depends on protocol, already installed)
 COPY nanobot-websocket-channel/mcp-webchat/ ./mcp-webchat/
+# Fix workspace source reference for Docker build context
+RUN sed -i 's/{ workspace = true }/{ path = "..\/nanobot-channel-protocol" }/g' ./mcp-webchat/pyproject.toml
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install ./mcp-webchat
 
