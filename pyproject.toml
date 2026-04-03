@@ -2,6 +2,7 @@
 members = [
   "backend",
   "mcp/mcp-lms",
+  "mcp/mcp-obs",
 
   # Uncommented for Task 2B
   "nanobot-websocket-channel/nanobot-channel-protocol",
@@ -11,6 +12,7 @@ members = [
 
 [tool.uv.sources]
 mcp-lms = { path = "mcp/mcp-lms", editable = true }
+mcp-obs = { path = "mcp/mcp-obs", editable = true }
 
 # Uncommented for Task 2B
 mcp-webchat = { path = "nanobot-websocket-channel/mcp-webchat", editable = true }

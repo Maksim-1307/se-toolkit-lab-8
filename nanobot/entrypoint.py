@@ -85,6 +85,21 @@ def resolve_config() -> str:
         # Allow connections from any origin (Caddy handles auth via query param)
         config["channels"]["webchat"]["allowFrom"] = ["*"]
     
+    # Configure observability MCP server (mcp-obs)
+    obs_logs_url = os.environ.get("NANOBOT_VICTORIALOGS_URL")
+    obs_traces_url = os.environ.get("NANOBOT_VICTORIATRACES_URL")
+    if obs_logs_url or obs_traces_url:
+        if "mcp_obs" not in config["tools"]["mcpServers"]:
+            config["tools"]["mcpServers"]["mcp_obs"] = {
+                "command": "python",
+                "args": ["-m", "mcp_obs"],
+                "env": {}
+            }
+        if obs_logs_url:
+            config["tools"]["mcpServers"]["mcp_obs"]["env"]["NANOBOT_VICTORIALOGS_URL"] = obs_logs_url
+        if obs_traces_url:
+            config["tools"]["mcpServers"]["mcp_obs"]["env"]["NANOBOT_VICTORIATRACES_URL"] = obs_traces_url
+
     # Configure mcp-webchat MCP server if access key is provided
     if nanobot_access_key:
         webchat_ui_relay_url = os.environ.get("NANOBOT_WEBCHAT_UI_RELAY_URL")
