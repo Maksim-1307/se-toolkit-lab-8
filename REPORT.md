@@ -265,15 +265,102 @@ Both are database connection errors caused by PostgreSQL being unavailable.
 
 ## Task 4A — Multi-step investigation
 
-<!-- Paste the agent's response to "What went wrong?" showing chained log + trace investigation -->
+### Agent response to "What went wrong?" (with PostgreSQL stopped):
+
+The agent performed a multi-step investigation:
+
+1. Called `mcp_mcp_obs_traces_list` to list recent traces for the LMS
+2. Called `mcp_mcp_obs_traces_get` with trace_id `77fad2caf0a233a9cfa4421890ed23a7`
+3. Examined the trace and produced an investigation report
+
+**Investigation report excerpt:**
+```
+Here's exactly what went wrong:
+
+## Root Cause: Database Connection Failure
+
+The LMS backend can't connect to its PostgreSQL database.
+Logs show `socket.gaierror: [Errno -2] Name or service not known` — the database hostname
+cannot be resolved, meaning the PostgreSQL container is down or unreachable.
+The trace shows the request failing at the db_query span within the Learning Management Service.
+```
+
+### Tool chain observed in nanobot logs:
+
+```
+Tool call: mcp_mcp_obs_traces_list({"limit": 5, "service": "Learning Management Service"})
+Tool call: mcp_mcp_obs_traces_get({"trace_id": "77fad2caf0a233a9cfa4421890ed23a7"})
+Response: Here's exactly what went wrong: ## Root Cause: Database Connection Failure
+```
+
+The agent cited both trace evidence (the failing db_query span) and log evidence (the connection error) in its investigation.
+
+---
 
 ## Task 4B — Proactive health check
 
-<!-- Screenshot or transcript of the proactive health report that appears in the Flutter chat -->
+A recurring health check was created via the Flutter web chat at `http://<vm-ip>:42002/flutter`:
+- The agent was asked to create a cron job that runs every 2 minutes
+- Each run checks for LMS/backend errors in the last 2 minutes using observability tools
+- While PostgreSQL was stopped, the scheduled job posted a failure report into the same chat
+- After PostgreSQL was restarted, a new health check reported the system as healthy
+
+The cron-based health check demonstrates the agent's ability to proactively monitor the system
+without being prompted for each check.
+
+---
 
 ## Task 4C — Bug fix and recovery
 
-<!-- 1. Root cause identified
-     2. Code fix (diff or description)
-     3. Post-fix response to "What went wrong?" showing the real underlying failure
-     4. Healthy follow-up report or transcript after recovery -->
+### 1. Root cause identified
+
+**Planted bug:** In `backend/src/lms_backend/routers/items.py`, the `get_items()` endpoint
+catches **all** exceptions (including database failures) and returns a misleading
+**404 "Items not found"** instead of a **500 Internal Server Error**.
+
+```python
+# BEFORE (buggy):
+except Exception as exc:
+    logger.warning("items_list_failed_as_not_found", ...)
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Items not found",
+    ) from exc
+```
+
+This hides the real database failure and makes debugging difficult — a database connectivity
+issue looks like "items not found" rather than a server error.
+
+### 2. Fix applied
+
+Changed the exception handler to return **500 Internal Server Error** with the actual error
+message, and upgraded the log level from WARNING to ERROR:
+
+```python
+# AFTER (fixed):
+except Exception as exc:
+    logger.error(
+        "items_list_failed",
+        extra={"event": "items_list_failed", "error": str(exc)},
+    )
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail=f"Failed to retrieve items: {exc}",
+    ) from exc
+```
+
+**File changed:** `backend/src/lms_backend/routers/items.py` (lines 19-29)
+
+### 3. Post-fix verification
+
+After rebuilding and redeploying the backend, stopping PostgreSQL and asking "What went wrong?"
+now shows the real underlying database failure (500 error with connection error details)
+instead of the misleading 404 response.
+
+### 4. Healthy follow-up
+
+After restarting PostgreSQL, the system returned to normal operation. A fresh health check
+reported no recent errors, confirming recovery.
+```
+Good news — no LMS backend errors in the last 10 minutes. The service looks clean. ✅
+```
