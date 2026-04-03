@@ -19,20 +19,25 @@ You have access to observability tools that let you query structured logs and di
 
 ## Strategy
 
-### When the user asks about errors or failures:
+### When the user asks "What went wrong?" or "Check system health":
 
-1. First call `mcp_obs_logs_error_count` with `service="Learning Management Service"` and `minutes=10` to check for recent errors
-2. If errors exist, call `mcp_obs_logs_search` with a query like:
+Perform a full one-shot investigation chain:
+
+1. **Count errors first**: Call `mcp_obs_logs_error_count` with `service="Learning Management Service"` and `minutes=10` to see if there are recent errors
+2. **Search for details**: If errors exist, call `mcp_obs_logs_search` with:
    ```
    _time:10m service.name:"Learning Management Service" severity:ERROR
    ```
-3. From the log results, look for a `trace_id` field in any error record
-4. If you find a `trace_id`, call `mcp_obs_traces_get` with that ID to see the full span hierarchy
-5. Summarize what you found — don't dump raw JSON
+3. **Extract a trace_id**: From the log results, look for a `trace_id` field in any error record
+4. **Fetch the trace**: If you find a `trace_id`, call `mcp_obs_traces_get` with that ID to see the full span hierarchy
+5. **Summarize**: Provide a coherent investigation report that mentions:
+   - What the logs show (the error message, which service failed, what operation)
+   - What the trace shows (the span hierarchy, where the failure occurred)
+   - Your conclusion about the root cause
 
-### When the user asks "what went wrong?" or "any errors?":
+### When the user asks about errors in a time window:
 
-1. Start with `mcp_obs_logs_error_count` scoped to the LMS backend and a narrow time window (10 minutes)
+1. Start with `mcp_obs_logs_error_count` scoped to the LMS backend and the requested time window
 2. If errors found, search for details with `mcp_obs_logs_search`
 3. If a trace_id is available, fetch the trace with `mcp_obs_traces_get`
 4. Provide a concise summary: what failed, where, and why
@@ -49,6 +54,7 @@ You have access to observability tools that let you query structured logs and di
 - Summarize log entries rather than dumping raw JSON
 - When showing traces, list spans in order with service name, operation, and duration
 - If no errors found, say so clearly: "No errors found in the last 10 minutes for the LMS backend."
+- Always mention both log evidence AND trace evidence in your investigation
 
 ### Key field names in logs:
 
