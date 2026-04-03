@@ -107,11 +107,60 @@ The skill teaches the agent to:
 
 ## Task 2A — Deployed agent
 
-<!-- Paste a short nanobot startup log excerpt showing the gateway started inside Docker -->
+### Nanobot startup log excerpt:
+
+```
+Using resolved config: /tmp/nanobot/config.resolved.json
+🐈 Starting nanobot gateway version 0.1.4.post5 on port 18790...
+✓ Channels enabled: webchat
+✓ Heartbeat: every 1800s
+MCP server 'lms': connected, 9 tools registered
+MCP server 'mcp_webchat': connected, 1 tools registered
+Agent loop started
+```
+
+### Files created/modified:
+- `nanobot/entrypoint.py` — resolves env vars into config at runtime, launches `nanobot gateway`
+- `nanobot/Dockerfile` — multi-stage uv build with all workspace packages
+- `docker-compose.yml` — nanobot service with correct volumes, env vars, and network
+- `nanobot/config.json` — base config with custom provider and MCP LMS server
 
 ## Task 2B — Web client
 
-<!-- Screenshot of a conversation with the agent in the Flutter web app -->
+### WebSocket endpoint test (`/ws/chat`):
+
+```
+$ websocat "ws://localhost:42002/ws/chat?access_key=nanobot-access-key-2026"
+> {"content":"What labs are available?"}
+< Here are the available labs:
+< | Lab ID | Title |
+< |--------|-------|
+< | lab-01 | Lab 01 – Products, Architecture & Roles |
+< | lab-02 | Lab 02 – Run, Fix, and Deploy a Backend Service |
+< | lab-03 | Lab 03 – Backend API: Explore, Debug, Implement, Deploy |
+< ...
+```
+
+The agent called `mcp_lms_lms_labs({})` and returned real lab names from the backend.
+
+### Flutter web client:
+
+Accessible at `http://<vm-ip>:42002/flutter` — returns HTTP 200 with Flutter web app.
+
+### Nanobot logs showing webchat activity:
+
+```
+Processing message from webchat:f3b5dde3-cf17-4a9b-8b08-c910cfaafbda: What labs are available?
+Tool call: mcp_lms_lms_labs({})
+Response to webchat:f3b5dde3-cf17-4a9b-8b08-c910cfaafbda: Here are the available labs: ...
+```
+
+### Files modified:
+- `caddy/Caddyfile` — uncommented `/ws/chat` and `/flutter*` routes
+- `docker-compose.yml` — uncommented `client-web-flutter` service and Caddy volume
+- `nanobot-websocket-channel/nanobot-webchat/pyproject.toml` — workspace → path source
+- `nanobot-websocket-channel/mcp-webchat/pyproject.toml` — workspace → path source
+- `pyproject.toml` — uncommented workspace members for webchat packages
 
 ## Task 3A — Structured logging
 
