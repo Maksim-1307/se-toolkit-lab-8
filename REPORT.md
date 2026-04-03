@@ -164,22 +164,44 @@ Response to webchat:f3b5dde3-cf17-4a9b-8b08-c910cfaafbda: Here are the available
 
 ## Task 3A — Structured logging
 
-### Happy-path log excerpt (request_started → request_completed):
+### Happy-path structured log entry (VictoriaLogs JSON):
 
-```
-backend-1  | 2026-04-03 11:34:03,161 INFO [lms_backend.main] - request_started
-backend-1  | 2026-04-03 11:34:03,162 INFO [lms_backend.auth] - auth_success
-backend-1  | 2026-04-03 11:34:03,163 INFO [lms_backend.db.items] - db_query
-backend-1  | 2026-04-03 11:34:03,185 INFO [lms_backend.main] - request_completed
+```json
+{
+    "_msg": "request_completed",
+    "_time": "2026-04-03T11:56:23.98916608Z",
+    "duration_ms": "59",
+    "event": "request_completed",
+    "method": "GET",
+    "path": "/items/",
+    "service.name": "Learning Management Service",
+    "severity": "INFO",
+    "span_id": "80522861afbdf8d3",
+    "status": "200",
+    "trace_id": "5eddd5e6918be95e4cd1b93508dfd112"
+}
 ```
 
-### Error-path log excerpt (PostgreSQL stopped):
+The happy-path log flow: `request_started` (INFO) → `auth_success` (INFO) → `db_query` (INFO) → `request_completed` (INFO, status 200).
 
-```
-backend-1  | socket.gaierror: [Errno -2] Name or service not known
+### Error-path structured log entry (VictoriaLogs JSON):
+
+```json
+{
+    "_msg": "db_query",
+    "_time": "2026-04-03T11:56:23.987367936Z",
+    "error": "[Errno -2] Name or service not known",
+    "event": "db_query",
+    "operation": "select",
+    "service.name": "Learning Management Service",
+    "severity": "ERROR",
+    "span_id": "80522861afbdf8d3",
+    "table": "item",
+    "trace_id": "5eddd5e6918be95e4cd1b93508dfd112"
+}
 ```
 
-The structured logs show the full request flow: `request_started` → `auth_success` → `db_query` → `request_completed`. When PostgreSQL is stopped, the `db_query` step fails with a connection error.
+When PostgreSQL is stopped, the `db_query` event produces an ERROR-level log with the connection error message and the same `trace_id` links it to the request.
 
 ### VictoriaLogs query:
 
@@ -190,8 +212,24 @@ Accessible at: `http://<vm-ip>:42002/utils/victorialogs/select/vmui`
 
 ## Task 3B — Traces
 
-Traces are available in VictoriaTraces at `http://<vm-ip>:42002/utils/victoriatraces`.
-The Jaeger-compatible API is at `http://victoriatraces:10428/select/jaeger/api/traces`.
+### Healthy trace (VictoriaTraces API):
+
+```
+GET http://localhost:42011/select/jaeger/api/traces?service=Learning+Management+Service&limit=3
+Found 3 traces
+  Trace 5eddd5e6918be95e4cd1b93508dfd112: 5 spans, services: {'Learning Management Service'}
+  Trace 51085d1764a96e6bfc3ddbca1d53bd3d: 5 spans, services: {'Learning Management Service'}
+  Trace 2839572bf1d337096bcb9c9d2aed9b59: 5 spans, services: {'Learning Management Service'}
+```
+
+Each trace has 5 spans covering the full request flow: HTTP request → auth → DB query → response.
+
+### Error trace:
+
+The error trace (trace_id `5eddd5e6918be95e4cd1b93508dfd112`) shows the same span hierarchy but with an ERROR span at `db_query` containing the PostgreSQL connection failure. The trace_id matches between the error log and the trace, enabling correlation.
+
+VictoriaTraces UI accessible at: `http://<vm-ip>:42002/utils/victoriatraces`
+Jaeger-compatible API at: `http://victoriatraces:10428/select/jaeger/api/traces`
 
 ---
 
