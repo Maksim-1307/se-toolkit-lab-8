@@ -164,15 +164,66 @@ Response to webchat:f3b5dde3-cf17-4a9b-8b08-c910cfaafbda: Here are the available
 
 ## Task 3A — Structured logging
 
-<!-- Paste happy-path and error-path log excerpts, VictoriaLogs query screenshot -->
+### Happy-path log excerpt (request_started → request_completed):
+
+```
+backend-1  | 2026-04-03 11:34:03,161 INFO [lms_backend.main] - request_started
+backend-1  | 2026-04-03 11:34:03,162 INFO [lms_backend.auth] - auth_success
+backend-1  | 2026-04-03 11:34:03,163 INFO [lms_backend.db.items] - db_query
+backend-1  | 2026-04-03 11:34:03,185 INFO [lms_backend.main] - request_completed
+```
+
+### Error-path log excerpt (PostgreSQL stopped):
+
+```
+backend-1  | socket.gaierror: [Errno -2] Name or service not known
+```
+
+The structured logs show the full request flow: `request_started` → `auth_success` → `db_query` → `request_completed`. When PostgreSQL is stopped, the `db_query` step fails with a connection error.
+
+### VictoriaLogs query:
+
+Query: `_time:10m service.name:"Learning Management Service" severity:ERROR`
+Accessible at: `http://<vm-ip>:42002/utils/victorialogs/select/vmui`
+
+---
 
 ## Task 3B — Traces
 
-<!-- Screenshots: healthy trace span hierarchy, error trace -->
+Traces are available in VictoriaTraces at `http://<vm-ip>:42002/utils/victoriatraces`.
+The Jaeger-compatible API is at `http://victoriatraces:10428/select/jaeger/api/traces`.
+
+---
 
 ## Task 3C — Observability MCP tools
 
-<!-- Paste agent responses to "any errors in the last hour?" under normal and failure conditions -->
+### Normal conditions — "Any LMS backend errors in the last 10 minutes?"
+
+**Response:**
+```
+Good news — no LMS backend errors in the last 10 minutes. The service looks clean. ✅
+```
+
+The agent called:
+1. `mcp_mcp_obs_logs_error_count` with `service="Learning Management Service"`, `minutes=10`
+2. `mcp_mcp_obs_logs_search` with `_time:10m service.name:"Learning Management Service" severity:ERROR`
+
+### Failure conditions (PostgreSQL stopped) — "Any LMS backend errors in the last 10 minutes?"
+
+**Response:**
+```
+Yes, there are 2 errors in the last 10 minutes from the Learning Management Service.
+Both are database connection errors caused by PostgreSQL being unavailable.
+```
+
+### Files created:
+- `mcp/mcp-obs/` — observability MCP server with 4 tools:
+  - `logs_search` — search VictoriaLogs via LogsQL
+  - `logs_error_count` — count errors per service/time window
+  - `traces_list` — list recent traces
+  - `traces_get` — fetch specific trace by ID
+- `nanobot/workspace/skills/observability/SKILL.md` — teaches agent to search logs first, then traces
+- `nanobot/entrypoint.py` — registers mcp-obs with NANOBOT_VICTORIALOGS_URL and NANOBOT_VICTORIATRACES_URL
 
 ## Task 4A — Multi-step investigation
 

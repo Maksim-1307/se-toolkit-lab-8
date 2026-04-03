@@ -44,6 +44,11 @@ COPY mcp/mcp-lms/ ./mcp-lms/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install ./mcp-lms
 
+# 5. mcp-obs (no internal dependencies)
+COPY mcp/mcp-obs/ ./mcp-obs/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install ./mcp-obs
+
 # Copy nanobot source
 COPY nanobot/ ./nanobot/
 
